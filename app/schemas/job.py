@@ -1,23 +1,20 @@
-from enum import Enum
+# app/schemas/job.py
 from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
+from uuid import UUID
+from enum import Enum
 import datetime
 
-# enumeration of job status prevents invalid statuses
 class JobStatus(str, Enum):
     pending = "pending"
     running = "running"
     completed = "completed"
     failed = "failed"
 
-# Create job
 class JobCreate(BaseModel):
-    task_name: str = Field(..., example="send_email")
-    payload: dict = Field(..., example={"user_id": 123})
+    task_name: str
+    payload: dict
 
-
-# Dependency of JobCreate injection in Job
 class Job(JobCreate):
-    id: UUID = Field(default_factory=uuid4)
-    status: JobStatus = JobStatus.pending
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    id: UUID
+    status: JobStatus
+    created_at: datetime.datetime
