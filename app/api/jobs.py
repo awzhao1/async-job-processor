@@ -5,6 +5,7 @@ from app.api.deps import get_db
 from app.db.models import Job as JobModel, JobStatus
 import time
 from uuid import UUID
+from app.queue import job_queue
 
 MAX_RETRIES = 3
 RETRY_DELAY = 5 # seconds
@@ -24,7 +25,9 @@ def create_job(job: JobCreate, background_tasks: BackgroundTasks, db: Session = 
     db.refresh(db_job)
 
     # Run job in background
-    background_tasks.add_task(process_job, job_id = db_job.id)
+    # background_tasks.add_task(process_job, job_id = db_job.id)
+
+    job_queue.enqueue(db_job.id)
 
     return db_job
 
