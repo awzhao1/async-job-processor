@@ -16,9 +16,9 @@ def process_message(job_id: UUID, receipt_handle: str):
         db.commit()
 
         # Simulated work
-        sleep(10)
+        # sleep(10)
 
-        # raise RuntimeError("Simulated failure")  # Uncomment to test retries
+        raise RuntimeError("Simulated failure")  # Uncomment to test retries
 
         job.status = JobStatus.completed
         db.commit()
@@ -27,11 +27,12 @@ def process_message(job_id: UUID, receipt_handle: str):
         job_queue.delete(receipt_handle)
 
     except Exception as e:
+        # “We rely on SQS visibility timeout for retries, but track retry count in the database so failures are bounded and observable.”
         job.retry_count += 1
         if job.retry_count >= settings.max_job_retries:
             job.status = JobStatus.failed
             db.commit()
-            job_queue.delete(receipt_handle)
+            # job_queue.delete(receipt_handle)
             print(f"☠️ Job {job_id} permanently failed")
         else:
             job.status = JobStatus.pending
