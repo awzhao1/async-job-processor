@@ -6,6 +6,8 @@ from app.db.models import Job as JobModel, JobStatus
 import time
 from uuid import UUID
 
+MAX_RETRIES = 3
+RETRY_DELAY = 5 # seconds
 
 # Create router
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -38,25 +40,34 @@ def get_job(job_id: UUID, db: Session = Depends(get_db)):
 def process_job(job_id: UUID):
     # Create a fresh session for this thread
     db = next(get_db())
-
-    # Updates status from pending -> running -> completed
-    job = db.query(JobModel).filter(JobModel.id == job_id).first()
-    if not job:
-        return
-
-    job.status = JobStatus.running
-    db.commit()
-    db.refresh(job)
-
     try:
-        # simulate doing work (replace this with real task)
-        time.sleep(15)
+        # Updates status from pending -> running -> completed
+        job = db.query(JobModel).filter(JobModel.id == job_id).first()
+        if not job:
+            return
 
-        # Mark as completed
-        job.status = JobStatus.completed
+        job.status = JobStatus.running
         db.commit()
         db.refresh(job)
-    except Exception as e:
+        attempt = 0
+        while attempt < MAX_RETRIES:
+            try:
+                # simulate doing work (replace this with real task)
+                print(f"Running job {job.id}, attempt {attempt+1}")
+                time.sleep(15)
+
+                # Mark as completed
+                job.status = JobStatus.completed
+                db.commit()
+                db.refresh(job)
+                return
+            except Exception as e:
+                attempt += 1
+                job.retry_count = attempt
+                db.commit()
+                db.refresh(job)
+                time.sleep(RETRY_DELAY)
+
         job.status = JobStatus.failed
         db.commit()
         db.refresh(job)

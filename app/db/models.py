@@ -1,6 +1,6 @@
 import uuid
 import datetime
-from sqlalchemy import Column, String, DateTime, Enum, JSON
+from sqlalchemy import Column, String, DateTime, Enum, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 from enum import Enum as PyEnum
@@ -24,6 +24,7 @@ class Job(Base):
         default=JobStatus.pending,
         nullable=False,
     )
+    retry_count = Column(Integer, default = 0, nullable=False)
     created_at = Column(
         DateTime, default=datetime.datetime.now, nullable=False
     )
