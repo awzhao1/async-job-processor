@@ -32,7 +32,7 @@ def process_message(job_id: UUID, receipt_handle: str):
         if job.retry_count >= settings.max_job_retries:
             job.status = JobStatus.failed
             db.commit()
-            # job_queue.delete(receipt_handle)
+            job_queue.delete(receipt_handle)
             print(f"☠️ Job {job_id} permanently failed")
         else:
             job.status = JobStatus.pending
@@ -46,7 +46,7 @@ def process_message(job_id: UUID, receipt_handle: str):
 def worker_loop():
     print("Worker started, polling SQS...")
     while True:
-        item = job_queue.dequeue()  # <-- use dequeue(), not receive_messages()
+        item = job_queue.dequeue()
         if item is None:
             sleep(2)
             continue
