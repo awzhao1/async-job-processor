@@ -7,4 +7,4 @@ from app.queue.sqs import SQSJobQueue
 # else:
 #     job_queue = InMemoryJobQueue()
 
-job_queue = SQSJobQueue(settings.SQS_QUEUE_URL)
+job_queue = SQSJobQueue(settings.sqs_queue_url)

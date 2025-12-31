@@ -1,15 +1,11 @@
-import time
-from uuid import UUID
-
+from time import sleep
 from app.queue import job_queue
 from app.db.session import SessionLocal
 from app.db.models import Job, JobStatus
+from uuid import UUID
+from app.core.config import settings
 
-
-def process_message(message):
-    job_id = UUID(message["Body"])
-    receipt_handle = message["ReceiptHandle"]
-
+def process_message(job_id: UUID, receipt_handle: str):
     db = SessionLocal()
     try:
         job = db.query(Job).filter(Job.id == job_id).first()
@@ -19,34 +15,44 @@ def process_message(message):
         job.status = JobStatus.running
         db.commit()
 
-        time.sleep(5)  # simulate work
+        # Simulated work
+        sleep(10)
+
+        # raise RuntimeError("Simulated failure")  # Uncomment to test retries
 
         job.status = JobStatus.completed
         db.commit()
 
-        # ✅ ACK message
-        job_queue.client.delete_message(
-            QueueUrl=job_queue.client.meta.endpoint_url,
-            ReceiptHandle=receipt_handle,
-        )
-
-        print(f"✅ Job {job_id} completed")
+        # ACK success
+        job_queue.delete(receipt_handle)
 
     except Exception as e:
-        print(f"❌ Job {job_id} failed: {e}")
-        # DO NOT delete message — visibility timeout handles retry
+        job.retry_count += 1
+        if job.retry_count >= settings.max_job_retries:
+            job.status = JobStatus.failed
+            db.commit()
+            job_queue.delete(receipt_handle)
+            print(f"☠️ Job {job_id} permanently failed")
+        else:
+            job.status = JobStatus.pending
+            db.commit()
+            print(f"🔁 Job {job_id} failed — retry {job.retry_count}/{settings.max_job_retries}")
 
     finally:
         db.close()
 
 
-def run_worker():
-    print("👷 Worker listening to SQS...")
+def worker_loop():
+    print("Worker started, polling SQS...")
     while True:
-        message = job_queue.dequeue()
-        if message:
-            process_message(message)
+        item = job_queue.dequeue()  # <-- use dequeue(), not receive_messages()
+        if item is None:
+            sleep(2)
+            continue
+
+        job_id, receipt_handle = item
+        process_message(job_id, receipt_handle)
 
 
 if __name__ == "__main__":
-    run_worker()
+    worker_loop()
