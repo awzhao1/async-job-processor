@@ -1,4 +1,4 @@
-# Async Job Processor (FastAPI + AWS SQS + ECS)
+# Async Job Processor
 
 An asynchronous job processing system built with FastAPI, PostgreSQL, AWS SQS, and ECS Fargate.
 Designed to demonstrate distributed systems fundamentals, fault tolerance, and cloud-native architecture.
